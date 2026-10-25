@@ -138,7 +138,7 @@ function App() {
 
       <div className="row">
         {/* ZONA PRODUCTOS */}
-        <div className="col-8">
+        <div className="col-12 col-lg-8">
           <div className="row g-3 my-3" id="contenedorProducto">
             {loading && <p role="status">Cargando productos...</p>}
 
@@ -161,7 +161,7 @@ function App() {
         </div>
 
         {/* ZONA CARRITO */}
-        <div className="col-4">
+        <div className="col-12 col-lg-4">
           <div className="border p-3 mt-3" id="panelCarrito">
             {isEmpty ? (
               <h3 className="text-center">El carrito está vacío</h3>
