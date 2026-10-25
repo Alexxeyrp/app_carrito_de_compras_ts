@@ -56,3 +56,285 @@ body {
     transition: none;
   }
 }
+
+/* ===================================
+   CARRITO DE COMPRAS - V1.0
+=================================== */
+
+.carrito-panel {
+  background: #ffffff;
+  border: 1px solid #f0e7e1;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 16px;
+  position: sticky;
+  top: 24px;
+  box-shadow: 0 4px 20px rgba(41, 37, 36, 0.035);
+}
+
+.carrito-header h2 {
+  color: #c2410c;
+  font-size: 1.4rem;
+  font-weight: 750;
+  margin-bottom: 24px;
+}
+
+/* Estado vacío */
+
+.carrito-vacio {
+  text-align: center;
+  padding: 35px 10px;
+}
+
+.carrito-vacio-icono {
+  display: block;
+  color: #c2410c;
+  font-size: 3rem;
+  margin-bottom: 15px;
+}
+
+.carrito-vacio p {
+  font-weight: 700;
+  margin-bottom: 5px;
+}
+
+.carrito-vacio > span:last-child {
+  color: #78716c;
+  font-size: 0.9rem;
+}
+
+/* Productos del carrito */
+
+.carrito-productos {
+  display: flex;
+  flex-direction: column;
+}
+
+.carrito-item {
+  padding: 16px 0;
+  border-bottom: 1px solid #f0e7e1;
+}
+
+.carrito-item:first-child {
+  padding-top: 0;
+}
+
+.carrito-item-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.carrito-item-header h3 {
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.carrito-eliminar {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid #e7e5e4;
+  border-radius: 50%;
+  background: #fff;
+  color: #78716c;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.carrito-eliminar:hover {
+  color: #b91c1c;
+  border-color: #b91c1c;
+  background: #fef2f2;
+}
+
+/* Cantidad y precios */
+
+.carrito-item-detalles {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.carrito-cantidad {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid #e7e5e4;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.carrito-cantidad button {
+  border: 0;
+  background: #faf7f5;
+  color: #292524;
+  width: 32px;
+  height: 34px;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.carrito-cantidad button:hover:not(:disabled) {
+  background: #f5e5db;
+}
+
+.carrito-cantidad button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.carrito-cantidad span {
+  min-width: 30px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.carrito-precios {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.carrito-precio-unitario {
+  color: #78716c;
+  font-size: 0.8rem;
+}
+
+.carrito-precios strong {
+  font-size: 0.95rem;
+  color: #292524;
+}
+
+/* Resumen */
+
+.carrito-resumen {
+  padding-top: 22px;
+}
+
+.carrito-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 22px;
+}
+
+.carrito-total span {
+  font-size: 0.95rem;
+}
+
+.carrito-total strong {
+  font-size: 1.7rem;
+  font-weight: 800;
+}
+
+.carrito-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: #fcf8f5;
+  border-radius: 10px;
+  padding: 13px;
+  margin-bottom: 18px;
+}
+
+.carrito-info span {
+  color: #15803d;
+  font-weight: 700;
+}
+
+.carrito-info p {
+  font-size: 0.82rem;
+  margin: 0;
+  color: #57534e;
+}
+
+.carrito-vaciar {
+  width: 100%;
+  border: 1px solid #e7e5e4;
+  border-radius: 999px;
+  background: white;
+  color: #78716c;
+  padding: 11px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.carrito-vaciar:hover {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.carrito-panel button:focus-visible {
+  outline: 3px solid #fb923c;
+  outline-offset: 3px;
+}
+
+/* Responsive */
+
+@media (max-width: 991px) {
+  .carrito-panel {
+    position: static;
+    margin-bottom: 32px;
+  }
+}
+
+@media (max-width: 400px) {
+  .carrito-panel {
+    padding: 18px;
+  }
+
+  .carrito-total strong {
+    font-size: 1.4rem;
+  }
+}
+
+/* Tarjetas de producto v1.0 */
+
+.producto-card .card-body {
+  padding: 20px;
+  gap: 6px;
+}
+
+.producto-categoria {
+  color: #78716c;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.producto-nombre {
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.producto-precio {
+  color: #c2410c;
+  font-size: 1.15rem;
+  font-weight: 750;
+  margin: 8px 0 16px;
+}
+
+.producto-imagen {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.producto-card .btn-primary {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+}

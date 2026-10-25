@@ -8,20 +8,25 @@ export default function ZonaProductos({ producto, addToCart }: ProductProps) {
       <div className="col-12 col-sm-6 col-xl-4 producto-card">
         <div className="card h-100">
           <img
-  src={image.thumbnail}
-  className="card-img-top producto-imagen"
-  alt={name}
-  loading="lazy"
-/>
-          <div className="card-body">
-            <h5 className="card-title">{name}</h5>
-            <p className="card-text">{category}</p>
-            <p className="card-text">${price.toFixed(2)}</p>
+            src={image.desktop}
+            className="card-img-top producto-imagen"
+            alt={name}
+            loading="lazy"
+            decoding="async"
+          />
+          <div className="card-body d-flex flex-column">
+            <p className="producto-categoria">{category}</p>
+
+            <h3 className="producto-nombre">{name}</h3>
+
+            <p className="producto-precio">${price.toFixed(2)}</p>
+
             <button
-              className="btn btn-primary"
+              type="button"
+              className="btn btn-primary mt-auto align-self-start"
               onClick={() => addToCart(producto)}
             >
-              Agregar
+              Agregar al carrito
             </button>
           </div>
         </div>

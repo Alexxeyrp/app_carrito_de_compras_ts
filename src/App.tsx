@@ -161,66 +161,108 @@ function App() {
         </div>
 
         {/* ZONA CARRITO */}
-        <div className="col-12 col-lg-4">
-          <div className="border p-3 mt-3" id="panelCarrito">
-            {isEmpty ? (
-              <h3 className="text-center">El carrito está vacío</h3>
-            ) : (
-              <>
-                <h4>
-                  Carrito
-                  <span id="cantidadCarrito"> {cart.length}</span>
-                </h4>
 
-                {cart.map((producto) => (
-                  <div key={producto.name} id="contenedorCarrito">
-                    <div className="d-flex gap-2">
-                      <span>{producto.name}</span>
+{/* ZONA CARRITO */}
+<div className="col-12 col-lg-4">
+  <aside className="carrito-panel" id="panelCarrito">
+    <div className="carrito-header">
+      <h2>
+        Tu carrito (
+        {cart.reduce((total, item) => total + item.quantity, 0)}
+        )
+      </h2>
+    </div>
 
-                      <button
-                        className="btn btn-dark"
-                        onClick={() => increaseQuantity(producto.name)}
-                      >
-                        +
-                      </button>
-
-                      <button
-                        className="btn btn-dark"
-                        onClick={() => decreaseQuantity(producto.name)}
-                      >
-                        -
-                      </button>
-
-                      <button
-                        className="btn btn-danger"
-                        onClick={() => removerFromCart(producto.name)}
-                      >
-                        x
-                      </button>
-
-                      <span className="float-end">
-                        ${(producto.price * producto.quantity).toFixed(2)}
-                      </span>
-                    </div>
-
-                    <div>Cantidad: {producto.quantity}</div>
-                  </div>
-                ))}
-
-                <p className="mt-3 mb-0">
-                  Total: <span id="totalCarrito">${cartTotal.toFixed(2)}</span>
-                </p>
+    {isEmpty ? (
+      <div className="carrito-vacio">
+        <span className="carrito-vacio-icono" aria-hidden="true">
+          ♡
+        </span>
+        <p>Tu carrito está vacío</p>
+        <span>¡Añade un postre para comenzar!</span>
+      </div>
+    ) : (
+      <>
+        <div className="carrito-productos">
+          {cart.map((producto) => (
+            <div className="carrito-item" key={producto.name}>
+              <div className="carrito-item-header">
+                <h3>{producto.name}</h3>
 
                 <button
-                  className="btn btn-dark w-100 mt-3 p-2"
-                  onClick={clearCart}
+                  type="button"
+                  className="carrito-eliminar"
+                  onClick={() => removerFromCart(producto.name)}
+                  aria-label={`Eliminar ${producto.name}`}
+                  title="Eliminar producto"
                 >
-                  Vaciar Carrito
+                  ×
                 </button>
-              </>
-            )}
-          </div>
+              </div>
+
+              <div className="carrito-item-detalles">
+                <div className="carrito-cantidad">
+                  <button
+                    type="button"
+                    onClick={() => decreaseQuantity(producto.name)}
+                    disabled={producto.quantity <= 1}
+                    aria-label={`Reducir cantidad de ${producto.name}`}
+                  >
+                    −
+                  </button>
+
+                  <span>{producto.quantity}</span>
+
+                  <button
+                    type="button"
+                    onClick={() => increaseQuantity(producto.name)}
+                    disabled={producto.quantity >= 10}
+                    aria-label={`Aumentar cantidad de ${producto.name}`}
+                  >
+                    +
+                  </button>
+                </div>
+
+                <div className="carrito-precios">
+                  <span className="carrito-precio-unitario">
+                    ${producto.price.toFixed(2)} / ud.
+                  </span>
+
+                  <strong>
+                    ${(producto.price * producto.quantity).toFixed(2)}
+                  </strong>
+                </div>
+              </div>
+            </div>
+          ))}
         </div>
+
+        <div className="carrito-resumen">
+          <div className="carrito-total">
+            <span>Total del pedido</span>
+            <strong id="totalCarrito">
+              ${cartTotal.toFixed(2)}
+            </strong>
+          </div>
+
+          <div className="carrito-info">
+            <span aria-hidden="true">✓</span>
+            <p>Revisa tus productos antes de confirmar.</p>
+          </div>
+
+          <button
+            type="button"
+            className="carrito-vaciar"
+            onClick={clearCart}
+          >
+            Vaciar carrito
+          </button>
+        </div>
+      </>
+    )}
+  </aside>
+</div>
+
       </div>
     </div>
   );
