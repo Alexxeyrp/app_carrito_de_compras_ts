@@ -1,28 +1,66 @@
 import { useEffect, useMemo, useState } from "react";
 import ZonaProductos from "./components/ZonaProductos";
+import OrderConfirmation from "./components/OrderConfirmation";
+
 import type { CartItem, Producto as ProductoType } from "./types";
 
 const API_URL = "http://localhost/carrito-api/api/products.php";
+const ORDERS_URL = "http://localhost/carrito-api/api/orders.php";
+
+type ConfirmedOrder = {
+  order_id: number;
+  total: number;
+};
 
 function App() {
-  // Recuperar carrito guardado
+  // Recuperar el carrito guardado
   const inicialCart = (): CartItem[] => {
     try {
       const storedCart = localStorage.getItem("cart");
-      return storedCart ? JSON.parse(storedCart) : [];
+      const parsed: unknown = storedCart ? JSON.parse(storedCart) : [];
+
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed.filter(
+        (item): item is CartItem =>
+          item !== null &&
+          typeof item === "object" &&
+          Number.isInteger(item.id) &&
+          item.id > 0 &&
+          typeof item.name === "string" &&
+          typeof item.price === "number" &&
+          Number.isFinite(item.price) &&
+          item.price >= 0 &&
+          Number.isInteger(item.quantity) &&
+          item.quantity >= 1 &&
+          item.quantity <= 10 &&
+          item.image !== null &&
+          typeof item.image === "object" &&
+          typeof item.image.thumbnail === "string",
+      );
     } catch {
       localStorage.removeItem("cart");
       return [];
     }
   };
 
-  // Estados
+  // ESTADOS
   const [data, setData] = useState<ProductoType[]>([]);
   const [cart, setCart] = useState<CartItem[]>(inicialCart);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Obtener productos desde PHP
+  // Estados de confirmación
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+  const [confirmedOrder, setConfirmedOrder] = useState<ConfirmedOrder | null>(
+    null,
+  );
+  const [confirmedItems, setConfirmedItems] = useState<CartItem[]>([]);
+
+  // OBTENER PRODUCTOS DESDE PHP
   useEffect(() => {
     const controller = new AbortController();
 
@@ -63,21 +101,21 @@ function App() {
     return () => controller.abort();
   }, []);
 
-  // Persistencia del carrito
+  // GUARDAR CARRITO EN LOCALSTORAGE
   useEffect(() => {
     localStorage.setItem("cart", JSON.stringify(cart));
   }, [cart]);
 
-  // Añadir producto
+  // AÑADIR PRODUCTOS AL CARRITO
   function addToCart(item: ProductoType) {
+    setOrderError(null);
+
     setCart((prevCart) => {
-      const itemExist = prevCart.find(
-        (producto) => producto.name === item.name,
-      );
+      const itemExist = prevCart.find((producto) => producto.id === item.id);
 
       if (itemExist) {
         return prevCart.map((producto) =>
-          producto.name === item.name
+          producto.id === item.id
             ? {
                 ...producto,
                 quantity: Math.min(producto.quantity + 1, 10),
@@ -90,181 +128,294 @@ function App() {
     });
   }
 
-  // Cálculos del carrito
+  // CÁLCULOS DEL CARRITO
   const isEmpty = cart.length === 0;
+
+  const cartQuantity = useMemo(
+    () => cart.reduce((total, item) => total + item.quantity, 0),
+    [cart],
+  );
 
   const cartTotal = useMemo(
     () => cart.reduce((total, item) => total + item.price * item.quantity, 0),
     [cart],
   );
 
-  // Eliminar producto
-  function removerFromCart(productName: CartItem["name"]) {
+  // ELIMINAR PRODUCTO
+  function removerFromCart(productId: CartItem["id"]) {
     setCart((prevCart) =>
-      prevCart.filter((producto) => producto.name !== productName),
+      prevCart.filter((producto) => producto.id !== productId),
     );
   }
 
-  // Aumentar cantidad
-  function increaseQuantity(productName: CartItem["name"]) {
+  // AUMENTAR CANTIDAD
+  function increaseQuantity(productId: CartItem["id"]) {
     setCart((prevCart) =>
       prevCart.map((producto) =>
-        producto.name === productName && producto.quantity < 10
+        producto.id === productId && producto.quantity < 10
           ? { ...producto, quantity: producto.quantity + 1 }
           : producto,
       ),
     );
   }
 
-  // Disminuir cantidad
-  function decreaseQuantity(productName: CartItem["name"]) {
+  // DISMINUIR CANTIDAD
+  function decreaseQuantity(productId: CartItem["id"]) {
     setCart((prevCart) =>
       prevCart.map((producto) =>
-        producto.name === productName && producto.quantity > 1
+        producto.id === productId && producto.quantity > 1
           ? { ...producto, quantity: producto.quantity - 1 }
           : producto,
       ),
     );
   }
 
-  // Vaciar carrito
+  // VACIAR CARRITO
   function clearCart() {
     setCart([]);
+    setOrderError(null);
+  }
+
+  // CONFIRMAR PEDIDO EN PHP Y MYSQL
+  async function confirmOrder() {
+    if (cart.length === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setOrderError(null);
+
+    const orderItems = cart.map((item) => ({ ...item }));
+
+    try {
+      const items = orderItems.map((producto) => ({
+        id: producto.id,
+        quantity: producto.quantity,
+      }));
+
+      // Validar identificadores y cantidades
+      if (
+        items.some(
+          (item) =>
+            !Number.isInteger(item.id) ||
+            item.id <= 0 ||
+            !Number.isInteger(item.quantity) ||
+            item.quantity < 1 ||
+            item.quantity > 10,
+        )
+      ) {
+        throw new Error(
+          "El carrito contiene productos antiguos. Vacíalo y vuelve a añadirlos.",
+        );
+      }
+
+      const response = await fetch(ORDERS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ items }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || "No se pudo registrar el pedido");
+      }
+
+      // Guardar una copia de los productos confirmados
+      setConfirmedItems(orderItems);
+
+      // Guardar los datos del pedido
+      setConfirmedOrder({
+        order_id: Number(result.order_id),
+        total: Number(result.total),
+      });
+
+      // Vaciar carrito después de confirmar
+      setCart([]);
+    } catch (err) {
+      setOrderError(
+        err instanceof Error ? err.message : "Ocurrió un error inesperado",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // CERRAR MODAL DE CONFIRMACIÓN
+  function closeOrderConfirmation() {
+    setConfirmedOrder(null);
+    setConfirmedItems([]);
   }
 
   return (
-    <div className="container">
-      <h1 className="mt-5">Desserts</h1>
+    <>
+      {/* MODAL INDEPENDIENTE DEL CARRITO */}
+      {confirmedOrder && (
+        <OrderConfirmation
+          orderId={confirmedOrder.order_id}
+          total={confirmedOrder.total}
+          items={confirmedItems}
+          onClose={closeOrderConfirmation}
+        />
+      )}
 
-      <div className="row">
-        {/* ZONA PRODUCTOS */}
-        <div className="col-12 col-lg-8">
-          <div className="row g-3 my-3" id="contenedorProducto">
-            {loading && <p role="status">Cargando productos...</p>}
+      <div className="container">
+        <h1 className="mt-5">Desserts</h1>
 
-            {error && (
-              <div className="alert alert-danger" role="alert">
-                {error}
-              </div>
-            )}
+        <div className="row">
+          {/* ZONA PRODUCTOS */}
+          <div className="col-12 col-lg-8">
+            <div className="row g-3 my-3" id="contenedorProducto">
+              {loading && <p role="status">Cargando productos...</p>}
 
-            {!loading &&
-              !error &&
-              data.map((producto) => (
-                <ZonaProductos
-                  key={producto.name}
-                  producto={producto}
-                  addToCart={addToCart}
-                />
-              ))}
-          </div>
-        </div>
-
-        {/* ZONA CARRITO */}
-
-{/* ZONA CARRITO */}
-<div className="col-12 col-lg-4">
-  <aside className="carrito-panel" id="panelCarrito">
-    <div className="carrito-header">
-      <h2>
-        Tu carrito (
-        {cart.reduce((total, item) => total + item.quantity, 0)}
-        )
-      </h2>
-    </div>
-
-    {isEmpty ? (
-      <div className="carrito-vacio">
-        <span className="carrito-vacio-icono" aria-hidden="true">
-          ♡
-        </span>
-        <p>Tu carrito está vacío</p>
-        <span>¡Añade un postre para comenzar!</span>
-      </div>
-    ) : (
-      <>
-        <div className="carrito-productos">
-          {cart.map((producto) => (
-            <div className="carrito-item" key={producto.name}>
-              <div className="carrito-item-header">
-                <h3>{producto.name}</h3>
-
-                <button
-                  type="button"
-                  className="carrito-eliminar"
-                  onClick={() => removerFromCart(producto.name)}
-                  aria-label={`Eliminar ${producto.name}`}
-                  title="Eliminar producto"
-                >
-                  ×
-                </button>
-              </div>
-
-              <div className="carrito-item-detalles">
-                <div className="carrito-cantidad">
-                  <button
-                    type="button"
-                    onClick={() => decreaseQuantity(producto.name)}
-                    disabled={producto.quantity <= 1}
-                    aria-label={`Reducir cantidad de ${producto.name}`}
-                  >
-                    −
-                  </button>
-
-                  <span>{producto.quantity}</span>
-
-                  <button
-                    type="button"
-                    onClick={() => increaseQuantity(producto.name)}
-                    disabled={producto.quantity >= 10}
-                    aria-label={`Aumentar cantidad de ${producto.name}`}
-                  >
-                    +
-                  </button>
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
                 </div>
+              )}
 
-                <div className="carrito-precios">
-                  <span className="carrito-precio-unitario">
-                    ${producto.price.toFixed(2)} / ud.
+              {!loading &&
+                !error &&
+                data.map((producto) => (
+                  <ZonaProductos
+                    key={producto.id}
+                    producto={producto}
+                    addToCart={addToCart}
+                  />
+                ))}
+            </div>
+          </div>
+
+          {/* ZONA CARRITO */}
+          <div className="col-12 col-lg-4">
+            <aside className="carrito-panel" id="panelCarrito">
+              <div className="carrito-header">
+                <h2>Tu carrito ({cartQuantity})</h2>
+              </div>
+
+              {isEmpty ? (
+                <div className="carrito-vacio">
+                  <span className="carrito-vacio-icono" aria-hidden="true">
+                    ♡
                   </span>
 
-                  <strong>
-                    ${(producto.price * producto.quantity).toFixed(2)}
-                  </strong>
+                  <p>Tu carrito está vacío</p>
+                  <span>¡Añade un postre para comenzar!</span>
                 </div>
-              </div>
-            </div>
-          ))}
-        </div>
+              ) : (
+                <>
+                  {/* PRODUCTOS DEL CARRITO */}
+                  <div className="carrito-productos">
+                    {cart.map((producto) => (
+                      <div className="carrito-item" key={producto.id}>
+                        <div className="carrito-item-header">
+                          <h3>{producto.name}</h3>
 
-        <div className="carrito-resumen">
-          <div className="carrito-total">
-            <span>Total del pedido</span>
-            <strong id="totalCarrito">
-              ${cartTotal.toFixed(2)}
-            </strong>
+                          <button
+                            type="button"
+                            className="carrito-eliminar"
+                            onClick={() => removerFromCart(producto.id)}
+                            disabled={isSubmitting}
+                            aria-label={`Eliminar ${producto.name}`}
+                            title="Eliminar producto"
+                          >
+                            ×
+                          </button>
+                        </div>
+
+                        <div className="carrito-item-detalles">
+                          <div className="carrito-cantidad">
+                            <button
+                              type="button"
+                              onClick={() => decreaseQuantity(producto.id)}
+                              disabled={isSubmitting || producto.quantity <= 1}
+                              aria-label={`Reducir cantidad de ${producto.name}`}
+                            >
+                              −
+                            </button>
+
+                            <span>{producto.quantity}</span>
+
+                            <button
+                              type="button"
+                              onClick={() => increaseQuantity(producto.id)}
+                              disabled={isSubmitting || producto.quantity >= 10}
+                              aria-label={`Aumentar cantidad de ${producto.name}`}
+                            >
+                              +
+                            </button>
+                          </div>
+
+                          <div className="carrito-precios">
+                            <span className="carrito-precio-unitario">
+                              ${producto.price.toFixed(2)} / ud.
+                            </span>
+
+                            <strong>
+                              ${(producto.price * producto.quantity).toFixed(2)}
+                            </strong>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* RESUMEN DEL CARRITO */}
+                  <div className="carrito-resumen">
+                    <div className="carrito-total">
+                      <span>Total del pedido</span>
+
+                      <strong id="totalCarrito">${cartTotal.toFixed(2)}</strong>
+                    </div>
+
+                    <div className="carrito-info">
+                      <span aria-hidden="true">✓</span>
+                      <p>Revisa tus productos antes de confirmar.</p>
+                    </div>
+
+                    {/* ERRORES DEL PEDIDO */}
+                    {orderError && (
+                      <p role="alert" className="text-danger small">
+                        {orderError}
+                      </p>
+                    )}
+
+                    {/* CONFIRMAR PEDIDO */}
+                    <button
+                      type="button"
+                      className="btn-confirmar-pedido"
+                      onClick={confirmOrder}
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting
+                        ? "Registrando pedido..."
+                        : "Confirmar pedido"}
+                    </button>
+
+                    {/* VACIAR CARRITO */}
+                    <button
+                      type="button"
+                      className="carrito-vaciar"
+                      onClick={clearCart}
+                      disabled={isSubmitting}
+                    >
+                      Vaciar carrito
+                    </button>
+                  </div>
+                </>
+              )}
+
+              {/* Mostrar errores incluso si el carrito está vacío */}
+              {isEmpty && orderError && (
+                <p role="alert" className="text-danger small mt-3">
+                  {orderError}
+                </p>
+              )}
+            </aside>
           </div>
-
-          <div className="carrito-info">
-            <span aria-hidden="true">✓</span>
-            <p>Revisa tus productos antes de confirmar.</p>
-          </div>
-
-          <button
-            type="button"
-            className="carrito-vaciar"
-            onClick={clearCart}
-          >
-            Vaciar carrito
-          </button>
         </div>
-      </>
-    )}
-  </aside>
-</div>
-
       </div>
-    </div>
+    </>
   );
 }
 
