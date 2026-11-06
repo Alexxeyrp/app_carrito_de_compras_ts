@@ -1,6 +1,6 @@
 import type { ProductProps } from "../types";
 
-export default function ZonaProductos({ producto, addToCart }: ProductProps) {
+export default function ZonaProductos({ producto, addToCart, disabled }: ProductProps) {
   const { name, category, price, image } = producto;
 
   return (
@@ -25,6 +25,7 @@ export default function ZonaProductos({ producto, addToCart }: ProductProps) {
               type="button"
               className="btn btn-primary mt-auto align-self-start"
               onClick={() => addToCart(producto)}
+              disabled={disabled}
             >
               Agregar al carrito
             </button>

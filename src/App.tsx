@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import ZonaProductos from "./components/ZonaProductos";
 import OrderConfirmation from "./components/OrderConfirmation";
+import { isProducto } from "./lib/products";
 
 import type { CartItem, Producto as ProductoType } from "./types";
 
-const API_URL = "http://localhost/carrito-api/api/products.php";
-const ORDERS_URL = "http://localhost/carrito-api/api/orders.php";
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(/\/+$/, "");
+const API_URL = `${API_BASE_URL}/products.php`;
+const ORDERS_URL = `${API_BASE_URL}/orders.php`;
 
 type ConfirmedOrder = {
   order_id: number;
@@ -25,23 +27,14 @@ function App() {
 
       return parsed.filter(
         (item): item is CartItem =>
-          item !== null &&
-          typeof item === "object" &&
-          Number.isInteger(item.id) &&
-          item.id > 0 &&
-          typeof item.name === "string" &&
-          typeof item.price === "number" &&
-          Number.isFinite(item.price) &&
-          item.price >= 0 &&
+          isProducto(item) &&
+          "quantity" in item &&
+          typeof item.quantity === "number" &&
           Number.isInteger(item.quantity) &&
           item.quantity >= 1 &&
-          item.quantity <= 10 &&
-          item.image !== null &&
-          typeof item.image === "object" &&
-          typeof item.image.thumbnail === "string",
+          item.quantity <= 10,
       );
     } catch {
-      localStorage.removeItem("cart");
       return [];
     }
   };
@@ -76,12 +69,12 @@ function App() {
 
         const products: unknown = await response.json();
 
-        if (!Array.isArray(products)) {
-          throw new Error("La API no devolvió una lista");
+        if (!Array.isArray(products) || !products.every(isProducto)) {
+          throw new Error("La API devolvió productos con un formato inválido");
         }
 
         if (!controller.signal.aborted) {
-          setData(products as ProductoType[]);
+          setData(products);
           setError(null);
         }
       } catch (err) {
@@ -103,7 +96,11 @@ function App() {
 
   // GUARDAR CARRITO EN LOCALSTORAGE
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(cart));
+    try {
+      localStorage.setItem("cart", JSON.stringify(cart));
+    } catch {
+      // El carrito sigue funcionando si el navegador bloquea el almacenamiento.
+    }
   }, [cart]);
 
   // AÑADIR PRODUCTOS AL CARRITO
@@ -215,10 +212,30 @@ function App() {
         body: JSON.stringify({ items }),
       });
 
-      const result = await response.json();
+      const result: unknown = await response.json();
+
+      if (!result || typeof result !== "object") {
+        throw new Error("La API devolvió una respuesta inválida");
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || "No se pudo registrar el pedido");
+        throw new Error(
+          "error" in result && typeof result.error === "string"
+            ? result.error
+            : "No se pudo registrar el pedido",
+        );
+      }
+
+      if (
+        !("order_id" in result) ||
+        !Number.isSafeInteger(result.order_id) ||
+        Number(result.order_id) <= 0 ||
+        !("total" in result) ||
+        typeof result.total !== "number" ||
+        !Number.isFinite(result.total) ||
+        result.total < 0
+      ) {
+        throw new Error("La API devolvió una confirmación inválida");
       }
 
       // Guardar una copia de los productos confirmados
@@ -281,6 +298,7 @@ function App() {
                     key={producto.id}
                     producto={producto}
                     addToCart={addToCart}
+                    disabled={isSubmitting}
                   />
                 ))}
             </div>

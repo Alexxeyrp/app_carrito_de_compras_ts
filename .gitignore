@@ -12,6 +12,27 @@ dist
 dist-ssr
 *.local
 
+# Environment and private backend configuration
+.env
+.env.*
+!.env.example
+!.env.*.example
+**/config/database.local.php
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Database exports may contain orders or credentials; keep only setup scripts
+*.sql
+!carrito-api/database/schema.sql
+!carrito-api/database/seed.sql
+*.sql.gz
+*.sqlite*
+*.bak
+*.zip
+.qodo/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

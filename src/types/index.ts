@@ -1,6 +1,7 @@
 export type ProductProps = {
   producto: Producto;
   addToCart: (item: Producto) => void;
+  disabled?: boolean;
 };
 
 export type Producto = {
